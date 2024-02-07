@@ -1,0 +1,4 @@
+SELECT c.name,SUM(a.amount)
+FROM CurrencyEntry a, Currencies c
+WHERE a.currency_id=c.id
+Group BY a.currency_id
