@@ -1,9 +1,5 @@
 {
-  "name": "getting-started",
-  "version": "1.0.0",
-  "description": "Discord example app",
   "main": "app.js",
-  "type": "module",
   "engines": {
     "node": "16.x"
   },
@@ -12,8 +8,6 @@
     "register": "node commands.js",
     "dev": "nodemon app.js"
   },
-  "author": "Shay DeWael",
-  "license": "MIT",
   "dependencies": {
     "discord-interactions": "^3.2.0",
     "discord.js": "^14.14.1",
