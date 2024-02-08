@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
+const sqlite3 = require('sqlite3');
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });

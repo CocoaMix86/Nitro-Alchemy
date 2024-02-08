@@ -1,102 +1,80 @@
+const {SlashCommandBuilder, EmbedBuilder} = require('discord.js');
+var pad = require('pad-right');
+const sqlite3 = require('sqlite3');
+const {db} = require('../../databases/dblogin.js'); 
+
 module.exports = {
-	name: 'account',
-	description: 'Gets account info for user.',
-	aliases: ['a', 'acc'],
-	usage: '[details] or [balance [page number]] or [currencyowned [page number]]',
-	details: `\`$account details\`
-		Lists summary of account, with items such as Total Worth and # of currencies owned.
-		
-		\`$account balance [page number]\`
-		Lists balance of every currency you currently have, sorted by most valuable.
-		
-		\`$account currencyowned [page number]\`
-		Similar to $currency, but only lists currencies that you own.`,
-	execute(message, args) {
-		Start(message, args)
+	data: new SlashCommandBuilder()
+		.setName('account')
+		.setDescription('Get details and stats of your account')
+		.addStringOption(option =>
+			option.setName('option')
+				.setDescription('The input to echo back')
+				.setRequired(true)
+				.addChoices(
+					{ name: 'Account', value: 'account'},
+					{ name: 'Balance', value: 'balance'},
+				)),
+	async execute(interaction) {
+		const option = interaction.options.getString('option')
+		const userId = interaction.user.id
+		console.log(userId);
+		var Embed = ProcessInput([option, userId]);
+		interaction.reply({ embeds: [Embed] });
 	},
 };
 
-const Discord = require('discord.js');
-var pad = require('pad-right');
-
-//
-//SQL
-const sqlite3 = require('sqlite3').verbose();
-
-let db = new sqlite3.Database('./currencybot.db', (err) => {
-  if (err) {
-    console.error(err.message);
-  }
-  console.log('ACCOUNT - Connected to CurrencyBot database');
-});
-
 
 //filters input
-function Start(message, args){
-	if (!args.length)
-		args[0] = 'balance'
-	
-	if (typeof args[1] == 'undefined')
-		args[1] = 1
-	else if (isNaN(args[1]) || !isFinite(args[1]) || args[1] < 1)
-		return message.channel.send('Page number entered was not valid.')
-	
-	
-	if (args[0] == 'details' || args[0] == 'd')
-		Account(message)
-	else if (args[0] == 'balance' || args[0] == 'b')
-		GetBalance(message, args)
-	else if (args[0] == 'currencyowned' || args[0] == 'co')
-		OwnedCurrencies(message, args)
-	else
-		message.channel.send("argument `" + args[0] + "` not recognized.")
+function ProcessInput(args){
+	if (args[0] == 'account')
+		return Account(args);
 }
 
 //
 //Gets details of a user's account
-async function Account(message){
-	var _account = 'a'+message.author.id
+async function Account(args){
+	var _account = 'a'+args[1];
+	var _currenciesowned;
+	var _totalworth;
+	var _created;
+	var _currencies = '';
 	
-	var _currenciesowned
-	var _totalworth
-	var _created
-	var _currencies = ''
-	
-	let sql1 = 'SELECT SUM(a.amount*c.value) as total FROM CurrencyEntry a, Currencies c WHERE c.name=a.currency_id AND account_id = ?'
-	let sql2 = 'SELECT COUNT(*) as count FROM Currencies WHERE owner_id = ?'
-	let sql3 = 'SELECT created_date FROM Accounts WHERE account_id = ?'
-	let sql4 = 'SELECT name FROM Currencies WHERE owner_id = ? ORDER BY name'
+	let sql1 = 'SELECT SUM(a.amount*c.value) as total FROM CurrencyEntry a, Currencies c WHERE c.name=a.currency_id AND account_id = ?';
+	let sql2 = 'SELECT COUNT(*) as count FROM Currencies WHERE owner_id = ?';
+	let sql3 = 'SELECT created_date FROM Accounts WHERE account_id = ?';
+	let sql4 = 'SELECT name FROM Currencies WHERE owner_id = ? ORDER BY name';
 	
 	db.each(sql1, _account, (err, row) => {
 		_totalworth = row.total
-	})
-	db.each(sql2, _account, (err, row) => {
+	}).each(sql2, _account, (err, row) => {
 		_currenciesowned = row.count
-	})
-	db.each(sql3, _account, (err, row) => {
+	}).each(sql3, _account, (err, row) => {
 		_created = row.created_date
-	})
-	db.each(sql4, _account, (err, row) => {
+	}).each(sql4, _account, (err, row) => {
 		_currencies += `\`${row.name}\`, `
-	})
-	await new Promise(resolve => setTimeout(resolve, 50));
-	Embed_AccountDetails(message, [`${_currenciesowned} \n ${_currencies}`, _totalworth, _created])
+	});
+
+	var Embed = Embed_AccountDetails([`${_currenciesowned} \n ${_currencies}`, _totalworth, _created]);
+	return Embed;
 }
 //
 //Sends message containing account details obtained above
-function Embed_AccountDetails(message, args){
+function Embed_AccountDetails(args) {
 
 	
-	const Embed = new Discord.MessageEmbed()
-	.setColor('#009900')
-	.setTitle('$account details')
-	.setDescription(`requested by ${message.author}`)
-	.setThumbnail('https://i.imgur.com/IHAnl9m.png')
-	.addFields(
-		{ name: 'DETAILS', value: `**USER:** ${message.author}\n**DATE JOINED:** ${args[2]}\n\n**NET WORTH:** ${args[1]}💰\n**CURRENCIES OWNED:** ${args[0]}`},
-	)
+	const Embed = new EmbedBuilder()
+		.setColor(0x009900)
+		.setTitle('$account details')
+		.setDescription(`requested by `)
+		.setThumbnail('https://i.imgur.com/IHAnl9m.png')
+		.addFields(
+			{ name: 'DETAILS', value: `**USER:** \n**DATE JOINED:** ${args[2]}\n\n**NET WORTH:** ${args[1]}💰\n**CURRENCIES OWNED:** ${args[0]}`},
+		)
+		.setTimestamp();
 
-	message.channel.send(Embed);
+	return Embed;
+	//message.channel.send(Embed);
 }
 
 
